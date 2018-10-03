@@ -1,0 +1,33 @@
+GENERATOR:
+  PackageName: cipvs
+
+PARSER:
+  IncludePaths:
+    - /usr/include
+  SourcesPaths:
+    - ip_vs.h
+
+TRANSLATOR:
+  ConstRules:
+    defines: expand
+    enum: expand
+  Rules:
+    const:
+      - transform: lower
+      - action: accept
+        from: "(?i)ip_vs_"
+      - action: accept
+        from: "(?i)ipvs_"
+      - action: ignore
+        from: "(?i)ip_vs_so_"
+      - action: ignore
+        from: "(?i)ip_vs_base_ctl"
+      - action: replace
+        from: "(?i)ip_vs_"
+        to: "_"
+      - action: replace
+        from: "(?i)ipvs_"
+        to: "_"
+      - transform: export
+    post-global:
+      - load: snakecase
