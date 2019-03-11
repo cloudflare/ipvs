@@ -31,6 +31,7 @@ func Test_NewIP(t *testing.T) {
 	}
 
 	for name, tt := range tests {
+		tt := tt
 		t.Run(name, func(t *testing.T) {
 			got := NewIP(tt.ip)
 
@@ -65,6 +66,7 @@ func TestIP_Net(t *testing.T) {
 	}
 
 	for name, tt := range tests {
+		tt := tt
 		t.Run(name, func(t *testing.T) {
 			got := tt.ip.Net(tt.af)
 
@@ -99,6 +101,7 @@ func Test_NewIPMask(t *testing.T) {
 	}
 
 	for name, tt := range tests {
+		tt := tt
 		t.Run(name, func(t *testing.T) {
 			got := NewIPMask(tt.mask)
 
@@ -128,6 +131,7 @@ func TestIPMask_Net(t *testing.T) {
 	}
 
 	for name, tt := range tests {
+		tt := tt
 		t.Run(name, func(t *testing.T) {
 			got := tt.mask.Net(tt.af)
 

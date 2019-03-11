@@ -67,11 +67,11 @@ type Destination struct {
 // for comparison of the identity of a Destination.
 type DestinationExtended struct {
 	Destination
-	Stats                 Stats
-	Stats64               Stats
 	ActiveConnections     uint32
 	InactiveConnections   uint32
 	PersistentConnections uint32
+	Stats                 Stats
+	Stats64               Stats
 }
 
 // Stats represents the statistics of a Service as a whole,

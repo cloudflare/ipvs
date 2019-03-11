@@ -257,6 +257,7 @@ func TestServices(t *testing.T) {
 	}
 
 	for name, tt := range tests {
+		tt := tt
 		t.Run(name, func(t *testing.T) {
 			fn := func(gerq genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
 				return tt.msgs, nil
@@ -312,7 +313,7 @@ func TestUnpackServiceCrashers(t *testing.T) {
 
 	for _, crash := range crashers {
 		var svc ServiceExtended
-		unpackService(&svc)([]byte(crash))
+		_ = unpackService(&svc)([]byte(crash))
 	}
 }
 
@@ -329,9 +330,8 @@ func TestServiceRoundTrip(t *testing.T) {
 	for _, crash := range crashers {
 		var svc1 ServiceExtended
 		var svc2 ServiceExtended
-		var err error
 
-		err = unpackService(&svc1)([]byte(crash))
+		err := unpackService(&svc1)([]byte(crash))
 		if err != nil {
 			t.Fatalf("failed to unpack service: %v", err)
 		}

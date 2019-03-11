@@ -120,8 +120,7 @@ func (c *client) Services() ([]ServiceExtended, error) {
 		}
 
 		for ad.Next() {
-			switch ad.Type() {
-			case cipvs.CmdAttrService:
+			if ad.Type() == cipvs.CmdAttrService {
 				ad.Do(unpackService(&s))
 			}
 		}
@@ -172,8 +171,7 @@ func (c *client) Service(svc Service) (ServiceExtended, error) {
 	}
 
 	for ad.Next() {
-		switch ad.Type() {
-		case cipvs.CmdAttrService:
+		if ad.Type() == cipvs.CmdAttrService {
 			ad.Do(unpackService(&s))
 		}
 	}
@@ -308,8 +306,7 @@ func (c *client) Destinations(svc Service) ([]DestinationExtended, error) {
 		}
 
 		for ad.Next() {
-			switch ad.Type() {
-			case cipvs.CmdAttrDest:
+			if ad.Type() == cipvs.CmdAttrDest {
 				ad.Do(unpackDestination(&dest))
 			}
 		}
