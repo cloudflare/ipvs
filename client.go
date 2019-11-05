@@ -4,7 +4,6 @@ package ipvs
 
 import (
 	"fmt"
-	"io"
 	"strings"
 )
 
@@ -12,8 +11,6 @@ import (
 // This would most commonly be connected to IPVS running on the same machine,
 // but may represent a connection to a broker on another machine.
 type Client interface {
-	io.Closer
-
 	Info() (Info, error)
 
 	Services() ([]ServiceExtended, error)

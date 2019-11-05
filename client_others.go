@@ -18,10 +18,6 @@ func newClient() (*client, error) {
 	return nil, errUnimplemented
 }
 
-func (c *client) Close() error {
-	return errUnimplemented
-}
-
 func (c *client) Info() (Info, error) {
 	return Info{}, errUnimplemented
 }
