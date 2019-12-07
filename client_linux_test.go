@@ -22,7 +22,7 @@ func TestServices_IsNotExist(t *testing.T) {
 	fn := func(gerq genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
 		return nil, io.EOF
 	}
-	client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetService, netlink.HeaderFlagsRequest|netlink.HeaderFlagsDump, fn))
+	client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetService, netlink.Request|netlink.Dump, fn))
 	defer client.Close()
 
 	if _, err := client.Services(); !os.IsNotExist(err) {
@@ -262,7 +262,7 @@ func TestServices(t *testing.T) {
 			fn := func(gerq genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
 				return tt.msgs, nil
 			}
-			client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetService, netlink.HeaderFlagsRequest|netlink.HeaderFlagsDump, fn))
+			client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetService, netlink.Request|netlink.Dump, fn))
 
 			defer client.Close()
 

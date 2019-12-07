@@ -54,7 +54,7 @@ func (c *client) Info() (Info, error) {
 			Version: cipvs.GenlVersion,
 		},
 	}
-	flags := netlink.HeaderFlagsRequest
+	flags := netlink.Request
 
 	msgs, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -100,7 +100,7 @@ func (c *client) Services() ([]ServiceExtended, error) {
 			Version: cipvs.GenlVersion,
 		},
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump
+	flags := netlink.Request | netlink.Dump
 
 	msgs, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -152,7 +152,7 @@ func (c *client) Service(svc Service) (ServiceExtended, error) {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest
+	flags := netlink.Request
 
 	msgs, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -200,7 +200,7 @@ func (c *client) CreateService(svc Service) error {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge
+	flags := netlink.Request | netlink.Acknowledge
 
 	r, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -232,7 +232,7 @@ func (c *client) RemoveService(svc Service) error {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge
+	flags := netlink.Request | netlink.Acknowledge
 
 	_, err = c.c.Execute(msg, c.family.ID, flags)
 	return err
@@ -255,7 +255,7 @@ func (c *client) UpdateService(svc Service) error {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge
+	flags := netlink.Request | netlink.Acknowledge
 
 	r, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -286,7 +286,7 @@ func (c *client) Destinations(svc Service) ([]DestinationExtended, error) {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsDump
+	flags := netlink.Request | netlink.Dump
 
 	msgs, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -339,7 +339,7 @@ func (c *client) CreateDestination(svc Service, dest Destination) error {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge
+	flags := netlink.Request | netlink.Acknowledge
 
 	r, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -371,7 +371,7 @@ func (c *client) UpdateDestination(svc Service, dest Destination) error {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge
+	flags := netlink.Request | netlink.Acknowledge
 
 	r, err := c.c.Execute(msg, c.family.ID, flags)
 	if err != nil {
@@ -403,7 +403,7 @@ func (c *client) RemoveDestination(svc Service, dest Destination) error {
 		},
 		Data: b,
 	}
-	flags := netlink.HeaderFlagsRequest | netlink.HeaderFlagsAcknowledge
+	flags := netlink.Request | netlink.Acknowledge
 
 	_, err = c.c.Execute(msg, c.family.ID, flags)
 	return err
