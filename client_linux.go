@@ -8,9 +8,9 @@ import (
 	"os"
 
 	"github.com/cloudflare/ipvs/internal/cipvs"
+	"github.com/josharian/native"
 	"github.com/mdlayher/genetlink"
 	"github.com/mdlayher/netlink"
-	"github.com/mdlayher/netlink/nlenc"
 )
 
 // client implements Client by connecting to IPVS
@@ -461,7 +461,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 		if len(flags) != 8 {
 			return fmt.Errorf("ipvs: flags attribute is not a uint32; length: %d", len(flags))
 		}
-		f := nlenc.NativeEndian().Uint32(flags)
+		f := native.Endian.Uint32(flags)
 		svc.Flags = Flags(f)
 
 		return nil
@@ -472,7 +472,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 func packService(svc Service) func() ([]byte, error) {
 	return func() ([]byte, error) {
 		flags := make([]byte, 4)
-		nlenc.NativeEndian().PutUint32(flags, uint32(svc.Flags))
+		native.Endian.PutUint32(flags, uint32(svc.Flags))
 		flags = append(flags, []byte{0xFF, 0xFF, 0xFF, 0xFF}...)
 
 		ae := netlink.NewAttributeEncoder()
