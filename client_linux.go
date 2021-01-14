@@ -437,7 +437,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 			case cipvs.SvcAttrFlags:
 				flags = ad.Bytes()
 			case cipvs.SvcAttrFwmark:
-				svc.FWMark = ad.Uint16()
+				svc.FWMark = ad.Uint32()
 			case cipvs.SvcAttrSchedName:
 				svc.Scheduler = ad.String()
 			case cipvs.SvcAttrTimeout:
@@ -483,7 +483,7 @@ func packService(svc Service) func() ([]byte, error) {
 		ae.Bytes(cipvs.SvcAttrNetmask, svc.Netmask[:])
 
 		if svc.FWMark != 0 {
-			ae.Uint16(cipvs.SvcAttrFwmark, svc.FWMark)
+			ae.Uint32(cipvs.SvcAttrFwmark, svc.FWMark)
 		} else {
 			ae.Uint16(cipvs.SvcAttrProtocol, uint16(svc.Protocol))
 			ae.Bytes(cipvs.SvcAttrAddr, svc.Address[:])
