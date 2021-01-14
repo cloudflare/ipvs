@@ -36,7 +36,7 @@ type Service struct {
 	Timeout   uint32
 	Flags     Flags
 	Port      uint16
-	FWMark    uint16
+	FWMark    uint32
 	Family    AddressFamily
 	Protocol  Protocol
 }

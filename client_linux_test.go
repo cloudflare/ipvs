@@ -316,38 +316,3 @@ func TestUnpackServiceCrashers(t *testing.T) {
 		_ = unpackService(&svc)([]byte(crash))
 	}
 }
-
-func TestServiceRoundTrip(t *testing.T) {
-	var crashers = []string{
-		"\x06\x00\x01\x00\x02\x0000\x06\x00\x05\x000000\x14\x00\x03\x00" +
-			"0000000000000000\f\x00\a\x00" +
-			"00000000\b\x00\t\x000000",
-		"\x06\x00\x01\x00\x02\x0000\x14\x00\x03\x0000000000" +
-			"00000000\f\x00\a\x0000000000" +
-			"\b\x00\t\x000000\x06\x00\x05\x000000",
-	}
-
-	for _, crash := range crashers {
-		var svc1 ServiceExtended
-		var svc2 ServiceExtended
-
-		err := unpackService(&svc1)([]byte(crash))
-		if err != nil {
-			t.Fatalf("failed to unpack service: %v", err)
-		}
-
-		p, err := packService(svc1.Service)()
-		if err != nil {
-			t.Fatalf("failed to pack service: %v", err)
-		}
-
-		err = unpackService(&svc2)(p)
-		if err != nil {
-			t.Fatalf("failed to unpack service: %v", err)
-		}
-
-		if diff := cmp.Diff(svc1.Service, svc2.Service); diff != "" {
-			t.Fatalf("unexpected difference in Services (-orig +roundtrip):\n%s", diff)
-		}
-	}
-}
