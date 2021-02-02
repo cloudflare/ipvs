@@ -5,6 +5,8 @@ package ipvs
 import (
 	"fmt"
 	"strings"
+
+	"inet.af/netaddr"
 )
 
 // Client represents an opaque IPVS client.
@@ -30,8 +32,7 @@ type Client interface {
 // When referencing an existing Service, only the identifying fields
 // (Address, Port, Family, and Protocol) are required to be set.
 type Service struct {
-	Address   IP
-	Netmask   IPMask
+	Address   netaddr.IPPrefix
 	Scheduler string
 	Timeout   uint32
 	Flags     Flags
@@ -51,7 +52,7 @@ type ServiceExtended struct {
 
 // Destination represents a connection to the real server.
 type Destination struct {
-	Address        IP
+	Address        netaddr.IP
 	FwdMethod      ForwardType
 	Weight         uint32
 	UpperThreshold uint32

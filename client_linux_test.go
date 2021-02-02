@@ -4,7 +4,6 @@ package ipvs
 
 import (
 	"io"
-	"net"
 	"os"
 	"testing"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/mdlayher/genetlink/genltest"
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nltest"
+	"inet.af/netaddr"
 )
 
 const familyID = 0x24
@@ -83,11 +83,10 @@ func TestServices(t *testing.T) {
 				{
 					Family:    INET,
 					Protocol:  TCP,
-					Address:   NewIP(net.IPv4(127, 0, 1, 1)),
+					Address:   netaddr.MustParseIPPrefix("127.0.1.0/31"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(31, 32)),
 				},
 			},
 		},
@@ -140,11 +139,10 @@ func TestServices(t *testing.T) {
 				{
 					Family:    INET6,
 					Protocol:  TCP,
-					Address:   NewIP(net.ParseIP("ff00::")),
+					Address:   netaddr.MustParseIPPrefix("ff00::/128"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(128, 128)),
 				},
 			},
 		},
@@ -237,20 +235,18 @@ func TestServices(t *testing.T) {
 				{
 					Family:    INET,
 					Protocol:  TCP,
-					Address:   NewIP(net.IPv4(127, 0, 1, 1)),
+					Address:   netaddr.MustParseIPPrefix("127.0.1.0/31"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(31, 32)),
 				},
 				{
 					Family:    INET6,
 					Protocol:  TCP,
-					Address:   NewIP(net.ParseIP("ff00::")),
+					Address:   netaddr.MustParseIPPrefix("ff00::/128"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(128, 128)),
 				},
 			},
 		},
@@ -276,7 +272,15 @@ func TestServices(t *testing.T) {
 				services = append(services, svc.Service)
 			}
 
-			if diff := cmp.Diff(tt.services, services); diff != "" {
+			prefixCmp := cmp.Comparer(func(a, b netaddr.IPPrefix) bool {
+				if a.IP.Compare(b.IP) != 0 {
+					return false
+				}
+
+				return a.Bits == b.Bits
+			})
+
+			if diff := cmp.Diff(tt.services, services, prefixCmp); diff != "" {
 				t.Fatalf("unexpected services (-want +got):\n%s", diff)
 			}
 		})
@@ -299,20 +303,4 @@ func testClient(t *testing.T, fn genltest.Func) *client {
 	}
 
 	return client
-}
-
-func TestUnpackServiceCrashers(t *testing.T) {
-	var crashers = []string{
-		"\x06\x00\x01\x00\n\x0000\x14\x00\x03\x0000000000" +
-			"00000000\f\x00\t\x0000000000",
-		"\x05\x00\x04\x000000",
-		"\x06\x00\x01\x00\x02\x0000\x14\x00\x03\x0000000000" +
-			"00000000\x06\x00\a\x000000\b\x00\t\x00" +
-			"0000",
-	}
-
-	for _, crash := range crashers {
-		var svc ServiceExtended
-		_ = unpackService(&svc)([]byte(crash))
-	}
 }

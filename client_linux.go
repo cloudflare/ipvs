@@ -5,12 +5,15 @@ package ipvs
 import (
 	"encoding/binary"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/cloudflare/ipvs/internal/cipvs"
 	"github.com/josharian/native"
 	"github.com/mdlayher/genetlink"
 	"github.com/mdlayher/netlink"
+	"github.com/mdlayher/netlink/nlenc"
+	"inet.af/netaddr"
 )
 
 // client implements Client by connecting to IPVS
@@ -423,6 +426,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 		}
 
 		var addr []byte
+		var mask []byte
 		var flags []byte
 		for ad.Next() {
 			switch ad.Type() {
@@ -443,7 +447,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 			case cipvs.SvcAttrTimeout:
 				svc.Timeout = ad.Uint32()
 			case cipvs.SvcAttrNetmask:
-				copy(svc.Netmask[:], ad.Bytes())
+				mask = ad.Bytes()
 			case cipvs.SvcAttrStats:
 				ad.Do(unpackStats(&svc.Stats))
 			case cipvs.SvcAttrStats64:
@@ -455,12 +459,18 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 		}
 
 		if svc.FWMark == 0 {
-			copy(svc.Address[:], addr)
+			address, err := unpackIPPrefix(svc.Family, addr, mask)
+			if err != nil {
+				return err
+			}
+
+			svc.Address = address
 		}
 
 		if len(flags) != 8 {
 			return fmt.Errorf("ipvs: flags attribute is not a uint32; length: %d", len(flags))
 		}
+
 		f := native.Endian.Uint32(flags)
 		svc.Flags = Flags(f)
 
@@ -480,13 +490,18 @@ func packService(svc Service) func() ([]byte, error) {
 		ae.String(cipvs.SvcAttrSchedName, svc.Scheduler)
 		ae.Bytes(cipvs.SvcAttrFlags, flags)
 		ae.Uint32(cipvs.SvcAttrTimeout, svc.Timeout)
-		ae.Bytes(cipvs.SvcAttrNetmask, svc.Netmask[:])
 
 		if svc.FWMark != 0 {
 			ae.Uint32(cipvs.SvcAttrFwmark, svc.FWMark)
 		} else {
+			addr, mask, err := packIPPrefix(svc.Family, svc.Address)
+			if err != nil {
+				return nil, err
+			}
+
+			ae.Bytes(cipvs.SvcAttrAddr, addr)
+			ae.Bytes(cipvs.SvcAttrNetmask, mask)
 			ae.Uint16(cipvs.SvcAttrProtocol, uint16(svc.Protocol))
-			ae.Bytes(cipvs.SvcAttrAddr, svc.Address[:])
 			ae.Do(cipvs.SvcAttrPort, packPort(svc.Port))
 		}
 
@@ -502,10 +517,11 @@ func unpackDestination(dest *DestinationExtended) func(b []byte) error {
 			return err
 		}
 
+		var addr []byte
 		for ad.Next() {
 			switch ad.Type() {
 			case cipvs.DestAttrAddr:
-				copy(dest.Address[:], ad.Bytes())
+				addr = ad.Bytes()
 			case cipvs.DestAttrPort:
 				ad.Do(unpackPort(&dest.Port))
 			case cipvs.DestAttrFwdMethod:
@@ -530,8 +546,18 @@ func unpackDestination(dest *DestinationExtended) func(b []byte) error {
 				ad.Do(unpackStats64(&dest.Stats64))
 			}
 		}
+
 		if err = ad.Err(); err != nil {
 			return err
+		}
+
+		if len(addr) == 16 {
+			address, err := unpackIP(dest.Family, addr)
+			if err != nil {
+				return err
+			}
+
+			dest.Address = address
 		}
 
 		return nil
@@ -543,13 +569,18 @@ func packDest(dest Destination) func() ([]byte, error) {
 	return func() ([]byte, error) {
 		ae := netlink.NewAttributeEncoder()
 		ae.Uint16(cipvs.DestAttrAddrFamily, uint16(dest.Family))
-		ae.Bytes(cipvs.DestAttrAddr, dest.Address[:])
 		ae.Do(cipvs.DestAttrPort, packPort(dest.Port))
 		ae.Uint32(cipvs.DestAttrFwdMethod, uint32(dest.FwdMethod))
 		ae.Uint32(cipvs.DestAttrWeight, dest.Weight)
 		ae.Uint32(cipvs.DestAttrUThresh, dest.UpperThreshold)
 		ae.Uint32(cipvs.DestAttrLThresh, dest.LowerThreshold)
 
+		addr, err := packIP(dest.Family, dest.Address)
+		if err != nil {
+			return nil, err
+		}
+
+		ae.Bytes(cipvs.DestAttrAddr, addr)
 		return ae.Encode()
 	}
 }
@@ -627,6 +658,94 @@ func unpackStats64(stats *Stats) func(b []byte) error {
 		}
 
 		return ad.Err()
+	}
+}
+
+func unpackIPPrefix(family AddressFamily, addr, mask []byte) (netaddr.IPPrefix, error) {
+	switch family {
+	case INET:
+		m := net.IPMask(mask)
+		bits, _ := m.Size()
+
+		return netaddr.IPv4(addr[0], addr[1], addr[2], addr[3]).Prefix(uint8(bits))
+	case INET6:
+		m := uint8(nlenc.Uint32(mask[:]))
+		p := [16]byte{}
+		copy(p[:], addr[:])
+		return netaddr.IPv6Raw(p).Prefix(m)
+	default:
+		return netaddr.IPPrefix{}, fmt.Errorf("ipvs: unknown address family; family: %d", family)
+	}
+}
+
+func packIPPrefix(family AddressFamily, addr netaddr.IPPrefix) ([]byte, []byte, error) {
+	if !addr.Valid() {
+		return nil, nil, fmt.Errorf("ipvs: unexpected valid address and mask")
+	}
+
+	switch family {
+	case INET:
+		if !addr.IP.Is4() {
+			return nil, nil, fmt.Errorf("ipvs: expected an IPv4 address: %s", addr.IP)
+		}
+
+		a := addr.IP.As4()
+		m := addr.IPNet().Mask
+
+		return a[:], m, nil
+	case INET6:
+		if !addr.IP.Is6() {
+			return nil, nil, fmt.Errorf("ipvs: expected an IPv6 address: %s", addr.IP)
+		}
+
+		a := addr.IP.As16()
+		b := addr.Bits
+		m := [4]byte{}
+
+		nlenc.PutUint32(m[:], uint32(b))
+
+		return a[:], m[:], nil
+	default:
+		return nil, nil, fmt.Errorf("ipvs: unknown address family; family: %d", family)
+	}
+}
+
+func unpackIP(family AddressFamily, addr []byte) (netaddr.IP, error) {
+	switch family {
+	case INET:
+		return netaddr.IPv4(addr[0], addr[1], addr[2], addr[3]), nil
+	case INET6:
+		p := [16]byte{}
+		copy(p[:], addr[:])
+
+		return netaddr.IPv6Raw(p), nil
+	default:
+		return netaddr.IP{}, fmt.Errorf("ipvs: unknown address family; family: %d", family)
+	}
+}
+
+func packIP(family AddressFamily, addr netaddr.IP) ([]byte, error) {
+	if addr.IsZero() {
+		return nil, fmt.Errorf("ipvs: unexpected zero address")
+	}
+
+	switch family {
+	case INET:
+		if !addr.Is4() {
+			return nil, fmt.Errorf("ipvs: expected an IPv4 address: %s", addr)
+		}
+
+		a := addr.As4()
+		return a[:], nil
+	case INET6:
+		if !addr.Is6() {
+			return nil, fmt.Errorf("ipvs: expected an IPv6 address: %s", addr)
+		}
+
+		a := addr.As16()
+		return a[:], nil
+	default:
+		return nil, fmt.Errorf("ipvs: unknown address family; family: %d", family)
 	}
 }
 
