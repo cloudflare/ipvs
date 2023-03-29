@@ -58,6 +58,9 @@ type Destination struct {
 	LowerThreshold uint32
 	Port           uint16
 	Family         AddressFamily
+	TunnelType     TunnelType
+	TunnelPort     uint16
+	TunnelFlags    TunnelFlags
 }
 
 // DestinationExtended contains fields that are not neccesarry
@@ -99,7 +102,7 @@ func New() (Client, error) {
 	return newClient()
 }
 
-//go:generate stringer -type=ForwardType,AddressFamily,Protocol --output zz_generated.stringer.go
+//go:generate stringer -type=ForwardType,AddressFamily,Protocol,TunnelType,TunnelFlags --output zz_generated.stringer.go
 
 // ForwardType configures how IPVS forwards traffic to the real server.
 type ForwardType uint32
@@ -174,3 +177,19 @@ func (i Flags) String() string {
 
 	return strings.Join(flags, " | ")
 }
+
+type TunnelType uint8
+
+const (
+	IPIP TunnelType = iota
+	GUE
+	GRE
+)
+
+type TunnelFlags uint16
+
+const (
+	TunnelEncapNoChecksum     TunnelFlags = 0
+	TunnelEncapChecksum       TunnelFlags = 0x0001
+	TunnelEncapRemoteChecksum TunnelFlags = 0x0002
+)

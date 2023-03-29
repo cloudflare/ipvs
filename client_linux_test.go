@@ -1,4 +1,5 @@
-//+build linux
+//go:build linux
+// +build linux
 
 package ipvs
 
@@ -9,11 +10,11 @@ import (
 	"testing"
 
 	"github.com/cloudflare/ipvs/internal/cipvs"
-	"github.com/google/go-cmp/cmp"
 	"github.com/mdlayher/genetlink"
 	"github.com/mdlayher/genetlink/genltest"
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nltest"
+	"gotest.tools/v3/assert"
 )
 
 const familyID = 0x24
@@ -267,18 +268,152 @@ func TestServices(t *testing.T) {
 			defer client.Close()
 
 			se, err := client.Services()
-			if err != nil {
-				t.Fatalf("failed to get services: %v", err)
-			}
+			assert.NilError(t, err)
 
 			services := []Service{}
 			for _, svc := range se {
 				services = append(services, svc.Service)
 			}
 
-			if diff := cmp.Diff(tt.services, services); diff != "" {
-				t.Fatalf("unexpected services (-want +got):\n%s", diff)
-			}
+			assert.DeepEqual(t, services, tt.services)
+		})
+	}
+}
+
+func TestDestinations_Unpack(t *testing.T) {
+	type testCase struct {
+		name     string
+		msgs     []genetlink.Message
+		expected []Destination
+	}
+
+	run := func(t *testing.T, tc testCase) {
+		fn := func(_ genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
+			return tc.msgs, nil
+		}
+
+		client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetDest, netlink.Request|netlink.Dump, fn))
+		defer client.Close()
+
+		result, err := client.Destinations(Service{})
+		assert.NilError(t, err)
+
+		dests := make([]Destination, 0, len(result))
+		for _, dest := range result {
+			dests = append(dests, dest.Destination)
+		}
+
+		assert.DeepEqual(t, dests, tc.expected)
+	}
+
+	testCases := []testCase{
+		{
+			name: "single direct",
+			msgs: []genetlink.Message{
+				{
+					Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+						{
+							Type: cipvs.CmdAttrDest,
+							Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+								{
+									Type: cipvs.DestAttrAddr,
+									Data: []byte{0x7F, 0, 0x01, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+								},
+								{
+									Type: cipvs.DestAttrFwdMethod,
+									Data: []byte{0x03, 0x00, 0x00, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrWeight,
+									Data: []byte{0x01, 0x00, 0x00, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrPort,
+									Data: []byte{0x00, 0x50},
+								},
+								{
+									Type: cipvs.DestAttrAddrFamily,
+									Data: []byte{0x02, 0x00},
+								},
+							}),
+						},
+					}),
+				},
+			},
+			expected: []Destination{
+				{
+					Address:   NewIP(net.ParseIP("127.0.1.1")),
+					FwdMethod: DirectRoute,
+					Weight:    1,
+					Port:      80,
+					Family:    INET,
+				},
+			},
+		},
+		{
+			name: "single GUE tunnel",
+			msgs: []genetlink.Message{
+				{
+					Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+						{
+							Type: cipvs.CmdAttrDest,
+							Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+								{
+									Type: cipvs.DestAttrAddr,
+									Data: []byte{0x7F, 0, 0x01, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+								},
+								{
+									Type: cipvs.DestAttrFwdMethod,
+									Data: []byte{0x02, 0x00, 0x00, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrWeight,
+									Data: []byte{0x01, 0x00, 0x00, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrPort,
+									Data: []byte{0x00, 0x50},
+								},
+								{
+									Type: cipvs.DestAttrAddrFamily,
+									Data: []byte{0x02, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrTunType,
+									Data: []byte{0x01},
+								},
+								{
+									Type: cipvs.DestAttrTunPort,
+									Data: []byte{0x15, 0xB3},
+								},
+								{
+									Type: cipvs.DestAttrTunFlags,
+									Data: []byte{0x02, 0x00},
+								},
+							}),
+						},
+					}),
+				},
+			},
+			expected: []Destination{
+				{
+					Address:     NewIP(net.ParseIP("127.0.1.1")),
+					FwdMethod:   Tunnel,
+					Weight:      1,
+					Port:        80,
+					Family:      INET,
+					TunnelType:  GUE,
+					TunnelPort:  5555,
+					TunnelFlags: TunnelEncapRemoteChecksum,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			run(t, tc)
 		})
 	}
 }
