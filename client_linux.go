@@ -1,4 +1,5 @@
-//+build linux
+//go:build linux
+// +build linux
 
 package ipvs
 
@@ -524,6 +525,12 @@ func unpackDestination(dest *DestinationExtended) func(b []byte) error {
 				dest.PersistentConnections = ad.Uint32()
 			case cipvs.DestAttrAddrFamily:
 				dest.Family = AddressFamily(ad.Uint16())
+			case cipvs.DestAttrTunType:
+				dest.TunnelType = TunnelType(ad.Uint8())
+			case cipvs.DestAttrTunPort:
+				ad.Do(unpackPort(&dest.TunnelPort))
+			case cipvs.DestAttrTunFlags:
+				dest.TunnelFlags = TunnelFlags(ad.Uint16())
 			case cipvs.DestAttrStats:
 				ad.Do(unpackStats(&dest.Stats))
 			case cipvs.DestAttrStats64:
@@ -549,6 +556,10 @@ func packDest(dest Destination) func() ([]byte, error) {
 		ae.Uint32(cipvs.DestAttrWeight, dest.Weight)
 		ae.Uint32(cipvs.DestAttrUThresh, dest.UpperThreshold)
 		ae.Uint32(cipvs.DestAttrLThresh, dest.LowerThreshold)
+		ae.Uint8(cipvs.DestAttrTunType, uint8(dest.TunnelType))
+		ae.Do(cipvs.DestAttrTunPort, packPort(dest.TunnelPort))
+		ae.Uint16(cipvs.DestAttrTunPort, dest.TunnelPort)
+		ae.Uint16(cipvs.DestAttrTunFlags, uint16(dest.TunnelFlags))
 
 		return ae.Encode()
 	}

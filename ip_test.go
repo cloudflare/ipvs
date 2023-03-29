@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	"gotest.tools/v3/assert"
 )
 
 func Test_NewIP(t *testing.T) {
@@ -35,9 +35,7 @@ func Test_NewIP(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := NewIP(tt.ip)
 
-			if diff := cmp.Diff(tt.expected, got); diff != "" {
-				t.Fatalf("diff:\n%s", diff)
-			}
+			assert.DeepEqual(t, got, tt.expected)
 		})
 	}
 }
@@ -70,9 +68,7 @@ func TestIP_Net(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := tt.ip.Net(tt.af)
 
-			if diff := cmp.Diff(tt.expected, got); diff != "" {
-				t.Fatalf("diff:\n%s", diff)
-			}
+			assert.DeepEqual(t, got, tt.expected)
 		})
 	}
 }
@@ -105,9 +101,7 @@ func Test_NewIPMask(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := NewIPMask(tt.mask)
 
-			if diff := cmp.Diff(tt.expected, got); diff != "" {
-				t.Fatalf("diff:\n%s", diff)
-			}
+			assert.DeepEqual(t, got, tt.expected)
 		})
 	}
 }
@@ -135,9 +129,7 @@ func TestIPMask_Net(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			got := tt.mask.Net(tt.af)
 
-			if diff := cmp.Diff(tt.expected, got); diff != "" {
-				t.Fatalf("diff:\n%s", diff)
-			}
+			assert.DeepEqual(t, got, tt.expected)
 		})
 	}
 }
