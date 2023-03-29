@@ -1,0 +1,23 @@
+name: Go Checks
+on:
+  - push
+  - pull_request
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        go:
+          - "1.19"
+          - "1.20"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go test ./...
+      - uses: dominikh/staticcheck-action@v1.3.0
+        with:
+          install-go: false
+          cache-key: ${{ matrix.go }}
