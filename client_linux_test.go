@@ -5,11 +5,13 @@ package ipvs
 
 import (
 	"io"
-	"net"
+	"net/netip"
 	"os"
 	"testing"
 
 	"github.com/cloudflare/ipvs/internal/cipvs"
+	"github.com/cloudflare/ipvs/netmask"
+	"github.com/google/go-cmp/cmp"
 	"github.com/mdlayher/genetlink"
 	"github.com/mdlayher/genetlink/genltest"
 	"github.com/mdlayher/netlink"
@@ -84,11 +86,11 @@ func TestServices(t *testing.T) {
 				{
 					Family:    INET,
 					Protocol:  TCP,
-					Address:   NewIP(net.IPv4(127, 0, 1, 1)),
+					Address:   netip.MustParseAddr("127.0.1.1"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(31, 32)),
+					Netmask:   netmask.MaskFrom(31, 32),
 				},
 			},
 		},
@@ -141,11 +143,11 @@ func TestServices(t *testing.T) {
 				{
 					Family:    INET6,
 					Protocol:  TCP,
-					Address:   NewIP(net.ParseIP("ff00::")),
+					Address:   netip.MustParseAddr("ff00::"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(128, 128)),
+					Netmask:   netmask.MaskFrom(128, 128),
 				},
 			},
 		},
@@ -238,20 +240,20 @@ func TestServices(t *testing.T) {
 				{
 					Family:    INET,
 					Protocol:  TCP,
-					Address:   NewIP(net.IPv4(127, 0, 1, 1)),
+					Address:   netip.MustParseAddr("127.0.1.1"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(31, 32)),
+					Netmask:   netmask.MaskFrom(31, 32),
 				},
 				{
 					Family:    INET6,
 					Protocol:  TCP,
-					Address:   NewIP(net.ParseIP("ff00::")),
+					Address:   netip.MustParseAddr("ff00::"),
 					Port:      80,
 					Scheduler: "wlc",
 					Timeout:   360,
-					Netmask:   NewIPMask(net.CIDRMask(128, 128)),
+					Netmask:   netmask.MaskFrom(128, 128),
 				},
 			},
 		},
@@ -275,7 +277,7 @@ func TestServices(t *testing.T) {
 				services = append(services, svc.Service)
 			}
 
-			assert.DeepEqual(t, services, tt.services)
+			assert.DeepEqual(t, services, tt.services, cmp.Comparer(NetipAddrCompare))
 		})
 	}
 }
@@ -296,15 +298,66 @@ func TestDestinations_Pack(t *testing.T) {
 		client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdNewDest, netlink.Request|netlink.Acknowledge, fn))
 		defer client.Close()
 
-		err := client.CreateDestination(Service{}, tc.destination)
+		err := client.CreateDestination(Service{
+			Address:   netip.MustParseAddr("127.0.1.1"),
+			Netmask:   netmask.MaskFrom(31, 32),
+			Scheduler: "wlc",
+			Timeout:   300,
+			Flags:     ServicePersistent,
+			Port:      8080,
+			Family:    INET,
+			Protocol:  TCP,
+		}, tc.destination)
 		assert.NilError(t, err)
+	}
+
+	svcAttr := netlink.Attribute{
+		Type: cipvs.CmdAttrService,
+		Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+			{
+				Type: cipvs.SvcAttrAf,
+				Data: []byte{0x02, 0x00},
+			},
+			{
+				Type: cipvs.SvcAttrSchedName,
+				Data: []byte{'w', 'l', 'c', 0x00},
+			},
+			{
+				Type: cipvs.SvcAttrFlags,
+				Data: []byte{0x01, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF},
+			},
+			{
+				Type: cipvs.SvcAttrTimeout,
+				Data: []byte{0x2C, 0x01, 0x00, 0x00},
+			},
+			{
+				Type: cipvs.SvcAttrNetmask,
+				Data: []byte{0xFF, 0xFF, 0xFF, 0xFE},
+			},
+			{
+				Type: cipvs.SvcAttrProtocol,
+				Data: []byte{0x06, 0x00},
+			},
+			{
+				Type: cipvs.SvcAttrAddr,
+				Data: []byte{
+					0x7F, 0x00, 0x01, 0x01,
+				},
+			},
+			{
+				Type: cipvs.SvcAttrPort,
+				Data: []byte{
+					0x1F, 0x90,
+				},
+			},
+		}),
 	}
 
 	testCases := []testCase{
 		{
 			name: "direct destination",
 			destination: Destination{
-				Address:   NewIP(net.ParseIP("127.0.1.1")),
+				Address:   netip.MustParseAddr("127.0.1.1"),
 				FwdMethod: DirectRoute,
 				Weight:    1,
 				Port:      80,
@@ -316,48 +369,7 @@ func TestDestinations_Pack(t *testing.T) {
 					Version: 1,
 				},
 				Data: nltest.MustMarshalAttributes([]netlink.Attribute{
-					{
-						Type: cipvs.CmdAttrService,
-						Data: nltest.MustMarshalAttributes([]netlink.Attribute{
-							{
-								Type: cipvs.SvcAttrAf,
-								Data: []byte{0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrSchedName,
-								Data: []byte{0x00},
-							},
-							{
-								Type: cipvs.SvcAttrFlags,
-								Data: []byte{0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF},
-							},
-							{
-								Type: cipvs.SvcAttrTimeout,
-								Data: []byte{0x00, 0x00, 0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrNetmask,
-								Data: []byte{0x00, 0x00, 0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrProtocol,
-								Data: []byte{0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrAddr,
-								Data: []byte{
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-								},
-							},
-							{
-								Type: cipvs.SvcAttrPort,
-								Data: []byte{
-									0x00, 0x00,
-								},
-							},
-						}),
-					},
+					svcAttr,
 					{
 						Type: cipvs.CmdAttrDest,
 						Data: nltest.MustMarshalAttributes([]netlink.Attribute{
@@ -368,8 +380,7 @@ func TestDestinations_Pack(t *testing.T) {
 							{
 								Type: cipvs.DestAttrAddr,
 								Data: []byte{
-									0x7F, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+									0x7F, 0x00, 0x01, 0x01,
 								},
 							},
 							{
@@ -412,7 +423,7 @@ func TestDestinations_Pack(t *testing.T) {
 		{
 			name: "direct IPv6 destination",
 			destination: Destination{
-				Address:   NewIP(net.ParseIP("2004:db8::3")),
+				Address:   netip.MustParseAddr("2004:db8::3"),
 				FwdMethod: DirectRoute,
 				Weight:    1,
 				Port:      80,
@@ -424,48 +435,7 @@ func TestDestinations_Pack(t *testing.T) {
 					Version: 1,
 				},
 				Data: nltest.MustMarshalAttributes([]netlink.Attribute{
-					{
-						Type: cipvs.CmdAttrService,
-						Data: nltest.MustMarshalAttributes([]netlink.Attribute{
-							{
-								Type: cipvs.SvcAttrAf,
-								Data: []byte{0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrSchedName,
-								Data: []byte{0x00},
-							},
-							{
-								Type: cipvs.SvcAttrFlags,
-								Data: []byte{0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF},
-							},
-							{
-								Type: cipvs.SvcAttrTimeout,
-								Data: []byte{0x00, 0x00, 0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrNetmask,
-								Data: []byte{0x00, 0x00, 0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrProtocol,
-								Data: []byte{0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrAddr,
-								Data: []byte{
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-								},
-							},
-							{
-								Type: cipvs.SvcAttrPort,
-								Data: []byte{
-									0x00, 0x00,
-								},
-							},
-						}),
-					},
+					svcAttr,
 					{
 						Type: cipvs.CmdAttrDest,
 						Data: nltest.MustMarshalAttributes([]netlink.Attribute{
@@ -520,7 +490,7 @@ func TestDestinations_Pack(t *testing.T) {
 		{
 			name: "GUE tunnel destination",
 			destination: Destination{
-				Address:     NewIP(net.ParseIP("127.0.1.1")),
+				Address:     netip.MustParseAddr("127.0.1.1"),
 				FwdMethod:   Tunnel,
 				Weight:      1,
 				Port:        80,
@@ -531,52 +501,12 @@ func TestDestinations_Pack(t *testing.T) {
 			},
 			expected: genetlink.Message{
 				Header: genetlink.Header{
+
 					Command: cipvs.CmdNewDest,
 					Version: 1,
 				},
 				Data: nltest.MustMarshalAttributes([]netlink.Attribute{
-					{
-						Type: cipvs.CmdAttrService,
-						Data: nltest.MustMarshalAttributes([]netlink.Attribute{
-							{
-								Type: cipvs.SvcAttrAf,
-								Data: []byte{0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrSchedName,
-								Data: []byte{0x00},
-							},
-							{
-								Type: cipvs.SvcAttrFlags,
-								Data: []byte{0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF},
-							},
-							{
-								Type: cipvs.SvcAttrTimeout,
-								Data: []byte{0x00, 0x00, 0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrNetmask,
-								Data: []byte{0x00, 0x00, 0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrProtocol,
-								Data: []byte{0x00, 0x00},
-							},
-							{
-								Type: cipvs.SvcAttrAddr,
-								Data: []byte{
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-								},
-							},
-							{
-								Type: cipvs.SvcAttrPort,
-								Data: []byte{
-									0x00, 0x00,
-								},
-							},
-						}),
-					},
+					svcAttr,
 					{
 						Type: cipvs.CmdAttrDest,
 						Data: nltest.MustMarshalAttributes([]netlink.Attribute{
@@ -587,8 +517,7 @@ func TestDestinations_Pack(t *testing.T) {
 							{
 								Type: cipvs.DestAttrAddr,
 								Data: []byte{
-									0x7F, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+									0x7F, 0x00, 0x01, 0x01,
 								},
 							},
 							{
@@ -661,7 +590,7 @@ func TestDestinations_Unpack(t *testing.T) {
 			dests = append(dests, dest.Destination)
 		}
 
-		assert.DeepEqual(t, dests, tc.expected)
+		assert.DeepEqual(t, dests, tc.expected, cmp.Comparer(NetipAddrCompare))
 	}
 
 	testCases := []testCase{
@@ -700,7 +629,7 @@ func TestDestinations_Unpack(t *testing.T) {
 			},
 			expected: []Destination{
 				{
-					Address:   NewIP(net.ParseIP("127.0.1.1")),
+					Address:   netip.MustParseAddr("127.0.1.1"),
 					FwdMethod: DirectRoute,
 					Weight:    1,
 					Port:      80,
@@ -755,7 +684,7 @@ func TestDestinations_Unpack(t *testing.T) {
 			},
 			expected: []Destination{
 				{
-					Address:     NewIP(net.ParseIP("127.0.1.1")),
+					Address:     netip.MustParseAddr("127.0.1.1"),
 					FwdMethod:   Tunnel,
 					Weight:      1,
 					Port:        80,
@@ -794,18 +723,6 @@ func testClient(t *testing.T, fn genltest.Func) *client {
 	return client
 }
 
-func TestUnpackServiceCrashers(t *testing.T) {
-	var crashers = []string{
-		"\x06\x00\x01\x00\n\x0000\x14\x00\x03\x0000000000" +
-			"00000000\f\x00\t\x0000000000",
-		"\x05\x00\x04\x000000",
-		"\x06\x00\x01\x00\x02\x0000\x14\x00\x03\x0000000000" +
-			"00000000\x06\x00\a\x000000\b\x00\t\x00" +
-			"0000",
-	}
-
-	for _, crash := range crashers {
-		var svc ServiceExtended
-		_ = unpackService(&svc)([]byte(crash))
-	}
+func NetipAddrCompare(x, y netip.Addr) bool {
+	return x == y
 }

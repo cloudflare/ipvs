@@ -6,12 +6,15 @@ package ipvs
 import (
 	"encoding/binary"
 	"fmt"
+	"net/netip"
 	"os"
 
 	"github.com/cloudflare/ipvs/internal/cipvs"
+	"github.com/cloudflare/ipvs/netmask"
 	"github.com/josharian/native"
 	"github.com/mdlayher/genetlink"
 	"github.com/mdlayher/netlink"
+	"github.com/mdlayher/netlink/nlenc"
 )
 
 // client implements Client by connecting to IPVS
@@ -425,6 +428,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 
 		var addr []byte
 		var flags []byte
+		var mask []byte
 		for ad.Next() {
 			switch ad.Type() {
 			case cipvs.SvcAttrAf:
@@ -444,7 +448,7 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 			case cipvs.SvcAttrTimeout:
 				svc.Timeout = ad.Uint32()
 			case cipvs.SvcAttrNetmask:
-				copy(svc.Netmask[:], ad.Bytes())
+				mask = ad.Bytes()
 			case cipvs.SvcAttrStats:
 				ad.Do(unpackStats(&svc.Stats))
 			case cipvs.SvcAttrStats64:
@@ -456,7 +460,25 @@ func unpackService(svc *ServiceExtended) func(b []byte) error {
 		}
 
 		if svc.FWMark == 0 {
-			copy(svc.Address[:], addr)
+			if svc.Family == INET {
+				addr = addr[0:4]
+			}
+
+			if addr, ok := netip.AddrFromSlice(addr); ok {
+				svc.Address = addr
+			}
+		}
+
+		if len(mask) > 0 {
+			switch svc.Family {
+			case INET:
+				if mask, ok := netmask.MaskFromSlice(mask); ok {
+					svc.Netmask = mask
+				}
+			case INET6:
+				ones := nlenc.Uint32(mask)
+				svc.Netmask = netmask.MaskFrom(int(ones), 128)
+			}
 		}
 
 		if len(flags) != 8 {
@@ -481,13 +503,22 @@ func packService(svc Service) func() ([]byte, error) {
 		ae.String(cipvs.SvcAttrSchedName, svc.Scheduler)
 		ae.Bytes(cipvs.SvcAttrFlags, flags)
 		ae.Uint32(cipvs.SvcAttrTimeout, svc.Timeout)
-		ae.Bytes(cipvs.SvcAttrNetmask, svc.Netmask[:])
+		switch {
+		case svc.Netmask.Is4():
+			ae.Bytes(cipvs.SvcAttrNetmask, svc.Netmask.AsSlice())
+		case svc.Netmask.Is6():
+			if ones := svc.Netmask.Bits(); ones > 0 {
+				b := make([]byte, 4)
+				nlenc.PutUint32(b, uint32(ones))
+				ae.Bytes(cipvs.SvcAttrNetmask, b)
+			}
+		}
 
 		if svc.FWMark != 0 {
 			ae.Uint32(cipvs.SvcAttrFwmark, svc.FWMark)
 		} else {
 			ae.Uint16(cipvs.SvcAttrProtocol, uint16(svc.Protocol))
-			ae.Bytes(cipvs.SvcAttrAddr, svc.Address[:])
+			ae.Bytes(cipvs.SvcAttrAddr, svc.Address.AsSlice())
 			ae.Do(cipvs.SvcAttrPort, packPort(svc.Port))
 		}
 
@@ -503,10 +534,11 @@ func unpackDestination(dest *DestinationExtended) func(b []byte) error {
 			return err
 		}
 
+		var addr []byte
 		for ad.Next() {
 			switch ad.Type() {
 			case cipvs.DestAttrAddr:
-				copy(dest.Address[:], ad.Bytes())
+				addr = ad.Bytes()
 			case cipvs.DestAttrPort:
 				ad.Do(unpackPort(&dest.Port))
 			case cipvs.DestAttrFwdMethod:
@@ -541,6 +573,13 @@ func unpackDestination(dest *DestinationExtended) func(b []byte) error {
 			return err
 		}
 
+		if dest.Family == INET {
+			addr = addr[0:4]
+		}
+		if addr, ok := netip.AddrFromSlice(addr); ok {
+			dest.Address = addr
+		}
+
 		return nil
 	}
 }
@@ -550,7 +589,7 @@ func packDest(dest Destination) func() ([]byte, error) {
 	return func() ([]byte, error) {
 		ae := netlink.NewAttributeEncoder()
 		ae.Uint16(cipvs.DestAttrAddrFamily, uint16(dest.Family))
-		ae.Bytes(cipvs.DestAttrAddr, dest.Address[:])
+		ae.Bytes(cipvs.DestAttrAddr, dest.Address.AsSlice())
 		ae.Do(cipvs.DestAttrPort, packPort(dest.Port))
 		ae.Uint32(cipvs.DestAttrFwdMethod, uint32(dest.FwdMethod))
 		ae.Uint32(cipvs.DestAttrWeight, dest.Weight)

@@ -4,7 +4,10 @@ package ipvs
 
 import (
 	"fmt"
+	"net/netip"
 	"strings"
+
+	"github.com/cloudflare/ipvs/netmask"
 )
 
 // Client represents an opaque IPVS client.
@@ -30,8 +33,8 @@ type Client interface {
 // When referencing an existing Service, only the identifying fields
 // (Address, Port, Family, and Protocol) are required to be set.
 type Service struct {
-	Address   IP
-	Netmask   IPMask
+	Address   netip.Addr
+	Netmask   netmask.Mask
 	Scheduler string
 	Timeout   uint32
 	Flags     Flags
@@ -51,7 +54,7 @@ type ServiceExtended struct {
 
 // Destination represents a connection to the real server.
 type Destination struct {
-	Address        IP
+	Address        netip.Addr
 	FwdMethod      ForwardType
 	Weight         uint32
 	UpperThreshold uint32
