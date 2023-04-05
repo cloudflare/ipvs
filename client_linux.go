@@ -558,7 +558,6 @@ func packDest(dest Destination) func() ([]byte, error) {
 		ae.Uint32(cipvs.DestAttrLThresh, dest.LowerThreshold)
 		ae.Uint8(cipvs.DestAttrTunType, uint8(dest.TunnelType))
 		ae.Do(cipvs.DestAttrTunPort, packPort(dest.TunnelPort))
-		ae.Uint16(cipvs.DestAttrTunPort, dest.TunnelPort)
 		ae.Uint16(cipvs.DestAttrTunFlags, uint16(dest.TunnelFlags))
 
 		return ae.Encode()
