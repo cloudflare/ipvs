@@ -9,8 +9,8 @@ jobs:
       fail-fast: true
       matrix:
         go:
-          - "1.19"
           - "1.20"
+          - "1.21"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -21,3 +21,19 @@ jobs:
         with:
           install-go: false
           cache-key: ${{ matrix.go }}
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+      - uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: oras pull ghcr.io/cloudflare/ipvs:umlrunner-20231008@sha256:c664252d9854922611e2ddc92ac8d66696d1519fbf78d4d40676f6f054e9926c
+      - run: chmod +x linux
+      - run: go build ./internal/cmd/umlrunner
+      - run: go test -v -exec "$(realpath umlrunner) -kernel $(realpath ./linux) -rootfs $(realpath stage4.raw)" ./...
