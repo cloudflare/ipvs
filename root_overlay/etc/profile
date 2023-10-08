@@ -1,0 +1,28 @@
+# /etc/profile: login shell setup
+#
+# That this file is used by any Bourne-shell derivative to setup the
+# environment for login shells.
+#
+
+# Load environment settings from profile.env, which is created by
+# env-update from the files in /etc/env.d
+if [ -e /etc/profile.env ] ; then
+        . /etc/profile.env
+fi
+
+# You should override these in your ~/.bashrc (or equivalent) for per-user
+# settings.  For system defaults, you can add a new file in /etc/profile.d/.
+export EDITOR=${EDITOR:-/bin/nano}
+export PAGER=${PAGER:-/usr/bin/less}
+
+unset ROOTPATH
+
+# process *.sh files in /etc/profile.d
+for sh in /etc/profile.d/*.sh ; do
+        [ -r "$sh" ] && . "$sh"
+done
+unset sh
+
+if [[ $TERM == "dumb" ]]; then
+    export PS1="$ "
+fi
