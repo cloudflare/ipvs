@@ -582,7 +582,9 @@ func TestDestinations_Unpack(t *testing.T) {
 		client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetDest, netlink.Request|netlink.Dump, fn))
 		defer client.Close()
 
-		result, err := client.Destinations(Service{})
+		result, err := client.Destinations(Service{
+			Family: INET,
+		})
 		assert.NilError(t, err)
 
 		dests := make([]Destination, 0, len(result))
@@ -621,6 +623,45 @@ func TestDestinations_Unpack(t *testing.T) {
 								{
 									Type: cipvs.DestAttrAddrFamily,
 									Data: []byte{0x02, 0x00},
+								},
+							}),
+						},
+					}),
+				},
+			},
+			expected: []Destination{
+				{
+					Address:   netip.MustParseAddr("127.0.1.1"),
+					FwdMethod: DirectRoute,
+					Weight:    1,
+					Port:      80,
+					Family:    INET,
+				},
+			},
+		},
+		{
+			name: "direct no address family",
+			msgs: []genetlink.Message{
+				{
+					Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+						{
+							Type: cipvs.CmdAttrDest,
+							Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+								{
+									Type: cipvs.DestAttrAddr,
+									Data: []byte{0x7F, 0, 0x01, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+								},
+								{
+									Type: cipvs.DestAttrFwdMethod,
+									Data: []byte{0x03, 0x00, 0x00, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrWeight,
+									Data: []byte{0x01, 0x00, 0x00, 0x00},
+								},
+								{
+									Type: cipvs.DestAttrPort,
+									Data: []byte{0x00, 0x50},
 								},
 							}),
 						},

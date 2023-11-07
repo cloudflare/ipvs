@@ -304,6 +304,11 @@ func (c *client) Destinations(svc Service) ([]DestinationExtended, error) {
 	dests := make([]DestinationExtended, 0, len(msgs))
 	for _, msg := range msgs {
 		var dest DestinationExtended
+		// In Linux kernels before 3.18, the address family of a destination
+		// could not differ from the service. Pass down the service's address
+		// family, which will be overridden by the kernel, if available.
+		dest.Family = svc.Family
+
 		ad, err := netlink.NewAttributeDecoder(msg.Data)
 		if err != nil {
 			return nil, err
