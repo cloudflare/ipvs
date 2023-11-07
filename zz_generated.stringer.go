@@ -8,14 +8,14 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[Masquarade-0]
+	_ = x[Masquerade-0]
 	_ = x[Local-1]
 	_ = x[Tunnel-2]
 	_ = x[DirectRoute-3]
 	_ = x[Bypass-4]
 }
 
-const _ForwardType_name = "MasquaradeLocalTunnelDirectRouteBypass"
+const _ForwardType_name = "MasqueradeLocalTunnelDirectRouteBypass"
 
 var _ForwardType_index = [...]uint8{0, 10, 15, 21, 32, 38}
 

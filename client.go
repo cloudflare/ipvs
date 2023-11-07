@@ -112,12 +112,15 @@ type ForwardType uint32
 
 // Well-known forwarding types.
 const (
-	Masquarade ForwardType = iota
+	Masquerade ForwardType = iota
 	Local
 	Tunnel
 	DirectRoute
 	Bypass
 )
+
+// Deprecated: This constant is a misspelling of "Masquerade".
+const Masquarade = Masquerade
 
 // AddressFamily determines if the Service or Destination is configured to use
 // IPv4 or IPv6 family.
