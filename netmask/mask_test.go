@@ -270,6 +270,29 @@ func TestNemask_AsSlice(t *testing.T) {
 	}
 }
 
+func TestNetmask_SliceRoundtrip(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		mask := rapid.Custom[Mask](func(t *rapid.T) Mask {
+			z := rapid.SampledFrom([]int8{z4, z6}).Draw(t, "z")
+
+			switch z {
+			case z4:
+				return Mask{mask: rapid.Uint32().Draw(t, "mask"), z: z4}
+			case z6:
+				return MaskFrom(rapid.IntRange(0, 128).Draw(t, "ones"), 128)
+			default:
+				return Mask{}
+			}
+		}).Draw(t, "mask")
+
+		slice := mask.AsSlice()
+		out, ok := MaskFromSlice(slice)
+		assert.Assert(t, ok)
+
+		assert.DeepEqual(t, out, mask)
+	})
+}
+
 func TestNetmask_MaskFrom(t *testing.T) {
 	type testCase struct {
 		name     string
@@ -466,46 +489,25 @@ func TestNetmask_Is6(t *testing.T) {
 }
 
 func TestNetmask_Bits(t *testing.T) {
-	type testCase struct {
-		name     string
-		mask     Mask
-		expected int
-	}
+	rapid.Check(t, func(t *rapid.T) {
+		var ones int
+		var mask Mask
+		z := rapid.SampledFrom([]int8{z0, z4, z6}).Draw(t, "z")
 
-	run := func(t *testing.T, tc testCase) {
-		assert.Equal(t, tc.mask.Bits(), tc.expected)
-	}
+		switch z {
+		case z4:
+			ones = rapid.IntRange(0, 32).Draw(t, "ones")
+			mask = MaskFrom(ones, 32)
+		case z6:
+			ones = rapid.IntRange(0, 128).Draw(t, "ones")
+			mask = MaskFrom(ones, 128)
+		default:
+			ones = -1
+			mask = Mask{}
+		}
 
-	testCases := []testCase{
-		{
-			name: "IPv4",
-			mask: Mask{
-				mask: 0xFFFF_FF00,
-				z:    z4,
-			},
-			expected: 24,
-		},
-		{
-			name: "IPv6",
-			mask: Mask{
-				mask: 128,
-				z:    z6,
-			},
-			expected: 128,
-		},
-		{
-			name:     "invalid",
-			mask:     Mask{},
-			expected: -1,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			run(t, tc)
-		})
-	}
+		assert.DeepEqual(t, mask.Bits(), ones)
+	})
 }
 
 func TestNetmask_MarshalBinary(t *testing.T) {
@@ -563,6 +565,31 @@ func TestNetmask_UnmarshalBinary(t *testing.T) {
 			run(t, tc)
 		})
 	}
+}
+
+func TestNetmask_BinaryMarshaller(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		mask := rapid.Custom[Mask](func(t *rapid.T) Mask {
+			z := rapid.SampledFrom([]int8{z0, z4, z6}).Draw(t, "z")
+
+			switch z {
+			case z4:
+				return MaskFrom(rapid.IntRange(0, 32).Draw(t, "ones"), 32)
+			case z6:
+				return MaskFrom(rapid.IntRange(0, 128).Draw(t, "ones"), 128)
+			default:
+				return Mask{}
+			}
+		}).Draw(t, "mask")
+
+		p, err := mask.MarshalBinary()
+		assert.NilError(t, err)
+
+		out := Mask{}
+		assert.NilError(t, out.UnmarshalBinary(p))
+
+		assert.DeepEqual(t, out, mask)
+	})
 }
 
 func TestNetmask_MarshalText(t *testing.T) {
