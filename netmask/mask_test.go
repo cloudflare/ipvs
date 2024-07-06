@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+	"pgregory.net/rapid"
 )
 
 func TestNetmask_MaskFrom4(t *testing.T) {
@@ -610,7 +611,7 @@ func TestNetmask_UnmarshalText(t *testing.T) {
 		{name: "zero mask", mask: []byte{}, expected: Mask{}},
 		{name: "ipv4 mask", mask: []byte("255.255.255.254"), expected: Mask{mask: 4294967294, z: z4}},
 		{name: "weird ipv4 mask", mask: []byte("255.0.255.0"), expected: Mask{mask: 4278255360, z: z4}},
-		{name: "ipv6 mask", mask: []byte{56}, expected: Mask{mask: 56, z: z6}},
+		{name: "ipv6 mask", mask: []byte("56"), expected: Mask{mask: 56, z: z6}},
 	}
 
 	for _, tc := range testCases {
@@ -619,6 +620,31 @@ func TestNetmask_UnmarshalText(t *testing.T) {
 			run(t, tc)
 		})
 	}
+}
+
+func TestNetmask_TextMarshaller(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		mask := rapid.Custom[Mask](func(t *rapid.T) Mask {
+			z := rapid.SampledFrom([]int8{z0, z4, z6}).Draw(t, "z")
+
+			switch z {
+			case z4:
+				return MaskFrom(rapid.IntRange(0, 32).Draw(t, "ones"), 32)
+			case z6:
+				return MaskFrom(rapid.IntRange(0, 128).Draw(t, "ones"), 128)
+			default:
+				return Mask{}
+			}
+		}).Draw(t, "mask")
+
+		p, err := mask.MarshalText()
+		assert.NilError(t, err)
+
+		out := Mask{}
+		assert.NilError(t, out.UnmarshalText(p))
+
+		assert.DeepEqual(t, out, mask)
+	})
 }
 
 func TestNetmask_String(t *testing.T) {

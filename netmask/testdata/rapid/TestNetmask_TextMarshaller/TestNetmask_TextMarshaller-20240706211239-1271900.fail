@@ -1,0 +1,9 @@
+# 2024/07/06 21:12:39.000571 [TestNetmask_TextMarshaller] [rapid] draw mask: netmask.Mask{mask:0xa, z:2}
+# 2024/07/06 21:12:39.000578 [TestNetmask_TextMarshaller] assertion failed: error is not nil: unexpected slice size
+# 
+v0.4.8#5215856823522468385
+0x38e38e38e38e4
+0x2
+0x0
+0x9867f1f40f739
+0xa

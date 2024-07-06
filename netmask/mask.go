@@ -254,8 +254,12 @@ func (mask *Mask) UnmarshalText(text []byte) error {
 	case n == 0:
 		*mask = Mask{}
 		return nil
-	case n == 1:
-		*mask = MaskFrom(int(text[0]), 128)
+	case n >= 1 && n <= 3:
+		u, err := strconv.ParseUint(string(text[:]), 10, 64)
+		if err != nil {
+			return err
+		}
+		*mask = MaskFrom(int(u), 128)
 		return nil
 	case n >= len("1.1.1.1") && n <= len("255.255.255.255"):
 		sub := strings.SplitN(string(text), ".", 4)

@@ -10,6 +10,7 @@ require (
 	github.com/xlab/c-for-go v0.0.0-20230906092656-a1822f0a09c1
 	golang.org/x/tools v0.14.0
 	gotest.tools/v3 v3.4.0
+	pgregory.net/rapid v1.1.0
 )
 
 require (
