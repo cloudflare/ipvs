@@ -512,7 +512,7 @@ func packService(svc Service) func() ([]byte, error) {
 		case svc.Netmask.Is4():
 			ae.Bytes(cipvs.SvcAttrNetmask, svc.Netmask.AsSlice())
 		case svc.Netmask.Is6():
-			if ones := svc.Netmask.Bits(); ones > 0 {
+			if ones := svc.Netmask.Bits(); ones >= 0 {
 				b := make([]byte, 4)
 				nlenc.PutUint32(b, uint32(ones))
 				ae.Bytes(cipvs.SvcAttrNetmask, b)

@@ -5,9 +5,11 @@ package ipvs
 
 import (
 	"io"
+	"net"
 	"net/netip"
 	"os"
 	"testing"
+	"unicode"
 
 	"github.com/cloudflare/ipvs/internal/cipvs"
 	"github.com/cloudflare/ipvs/netmask"
@@ -17,6 +19,7 @@ import (
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nltest"
 	"gotest.tools/v3/assert"
+	"pgregory.net/rapid"
 )
 
 const familyID = 0x24
@@ -280,6 +283,55 @@ func TestServices(t *testing.T) {
 			assert.DeepEqual(t, services, tt.services, cmp.Comparer(NetipAddrCompare))
 		})
 	}
+}
+
+func TestService_PackUnpack(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		svc := rapid.Custom[Service](func(t *rapid.T) Service {
+			family := rapid.SampledFrom([]AddressFamily{INET, INET6}).Draw(t, "Family")
+			var addr netip.Addr
+			var mask netmask.Mask
+
+			switch family {
+			case INET:
+				addr, _ = netip.AddrFromSlice(rapid.SliceOfN(rapid.Byte(), net.IPv4len, net.IPv4len).Draw(t, "Address"))
+				mask = netmask.MaskFrom(rapid.IntRange(0, 32).Draw(t, "ones"), 32)
+			case INET6:
+				addr, _ = netip.AddrFromSlice(rapid.SliceOfN(rapid.Byte(), net.IPv6len, net.IPv6len).Draw(t, "Address"))
+				mask = netmask.MaskFrom(rapid.IntRange(0, 128).Draw(t, "ones"), 128)
+			}
+
+			return Service{
+				Address:   addr,
+				Netmask:   mask,
+				Scheduler: rapid.StringOf(rapid.RuneFrom(nil, unicode.Letter, unicode.Number)).Draw(t, "Scheduler"),
+				Timeout:   rapid.Uint32().Draw(t, "Timeout"),
+				Flags:     Flags(rapid.Uint32().Draw(t, "Flags")),
+				Port:      rapid.Uint16().Draw(t, "Port"),
+				Family:    family,
+				Protocol:  Protocol(rapid.Uint16().Draw(t, "Protocol")),
+			}
+		}).Draw(t, "svc")
+
+		ae := netlink.NewAttributeEncoder()
+		ae.Do(cipvs.CmdAttrService, packService(svc))
+		p, err := ae.Encode()
+
+		assert.NilError(t, err)
+
+		ad, err := netlink.NewAttributeDecoder(p)
+		assert.NilError(t, err)
+
+		var out ServiceExtended
+		for ad.Next() {
+			if ad.Type() == cipvs.CmdAttrService {
+				ad.Do(unpackService(&out))
+			}
+		}
+
+		assert.NilError(t, ad.Err())
+		assert.DeepEqual(t, out.Service, svc, cmp.Comparer(NetipAddrCompare))
+	})
 }
 
 func TestDestinations_Pack(t *testing.T) {
