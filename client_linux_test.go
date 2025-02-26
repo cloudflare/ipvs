@@ -798,6 +798,75 @@ func TestDestinations_Unpack(t *testing.T) {
 	}
 }
 
+func TestConfig(t *testing.T) {
+	fn := func(gerq genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
+		msg := []genetlink.Message{
+			{
+				Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+					{
+						Type: cipvs.CmdAttrTimeoutTcp,
+						Data: []byte{0x46, 0x00, 0x00, 0x00},
+					},
+					{
+						Type: cipvs.CmdAttrTimeoutTcpFin,
+						Data: []byte{0x1e, 0x00, 0x00, 0x00},
+					},
+					{
+						Type: cipvs.CmdAttrTimeoutUdp,
+						Data: []byte{0x28, 0x00, 0x00, 0x00},
+					},
+				}),
+			},
+		}
+		return msg, nil
+	}
+	client := testClient(t, fn)
+	defer client.Close()
+
+	actualConfig, err := client.Config()
+	assert.NilError(t, err)
+	assert.DeepEqual(t, actualConfig, Config{
+		TCPTimeout:    70,
+		TCPFinTimeout: 30,
+		UDPTimeout:    40,
+	})
+}
+
+func TestSetConfig(t *testing.T) {
+	expected := genetlink.Message{
+		Header: genetlink.Header{
+			Command: cipvs.CmdSetConfig,
+			Version: 1,
+		},
+		Data: nltest.MustMarshalAttributes([]netlink.Attribute{
+			{
+				Type: cipvs.CmdAttrTimeoutTcp,
+				Data: []byte{0x84, 0x03, 0x00, 0x00},
+			},
+			{
+				Type: cipvs.CmdAttrTimeoutTcpFin,
+				Data: []byte{0x85, 0x03, 0x00, 0x00},
+			},
+			{
+				Type: cipvs.CmdAttrTimeoutUdp,
+				Data: []byte{0x86, 0x03, 0x00, 0x00},
+			},
+		}),
+	}
+	fn := func(gerq genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
+		assert.DeepEqual(t, gerq, expected)
+		return []genetlink.Message{{}}, nil
+	}
+	client := testClient(t, fn)
+	defer client.Close()
+
+	assert.NilError(t, client.SetConfig(Config{
+		TCPTimeout:    900,
+		TCPFinTimeout: 901,
+		UDPTimeout:    902,
+	}))
+}
+
 func testClient(t *testing.T, fn genltest.Func) *client {
 	t.Helper()
 
