@@ -16,6 +16,9 @@ import (
 type Client interface {
 	Info() (Info, error)
 
+	Config() (Config, error)
+	SetConfig(Config) error
+
 	Services() ([]ServiceExtended, error)
 	Service(Service) (ServiceExtended, error)
 	CreateService(Service) error
@@ -97,6 +100,14 @@ type Stats struct {
 type Info struct {
 	Version             [3]int
 	ConnectionTableSize uint32
+}
+
+// Config represents the timeout values (in seconds) for TCP sessions,
+// TCP sessions after receiving a FIN packet, and UDP packets.
+type Config struct {
+	TCPTimeout    uint32
+	TCPFinTimeout uint32
+	UDPTimeout    uint32
 }
 
 // New returns an instance of Client.

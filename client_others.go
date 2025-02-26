@@ -23,6 +23,14 @@ func (c *client) Info() (Info, error) {
 	return Info{}, errUnimplemented
 }
 
+func (c *client) Config() (Config, error) {
+	return Config{}, errUnimplemented
+}
+
+func (c *client) SetConfig(config Config) error {
+	return errUnimplemented
+}
+
 func (c *client) Services() ([]ServiceExtended, error) {
 	return nil, errUnimplemented
 }

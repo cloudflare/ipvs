@@ -96,6 +96,84 @@ func (c *client) Info() (Info, error) {
 	return info, nil
 }
 
+// Config fetches the Config object from the netlink connection.
+func (c *client) Config() (Config, error) {
+	msg := genetlink.Message{
+		Header: genetlink.Header{
+			Command: cipvs.CmdGetConfig,
+			Version: cipvs.GenlVersion,
+		},
+	}
+	flags := netlink.Request
+
+	msgs, err := c.c.Execute(msg, c.family.ID, flags)
+	if err != nil {
+		return Config{}, err
+	}
+
+	if len(msgs) == 0 {
+		return Config{}, os.ErrNotExist
+	}
+
+	var config Config
+	for _, msg := range msgs {
+		ad, err := netlink.NewAttributeDecoder(msg.Data)
+		if err != nil {
+			return Config{}, err
+		}
+
+		for ad.Next() {
+			switch ad.Type() {
+			case cipvs.CmdAttrTimeoutTcp:
+				config.TCPTimeout = ad.Uint32()
+			case cipvs.CmdAttrTimeoutTcpFin:
+				config.TCPFinTimeout = ad.Uint32()
+			case cipvs.CmdAttrTimeoutUdp:
+				config.UDPTimeout = ad.Uint32()
+			}
+		}
+
+		if err := ad.Err(); err != nil {
+			return Config{}, err
+		}
+	}
+
+	return config, nil
+}
+
+// SetConfig changes the timeout values used for IPVS connections.
+func (c *client) SetConfig(config Config) error {
+	ae := netlink.NewAttributeEncoder()
+	ae.Uint32(cipvs.CmdAttrTimeoutTcp, config.TCPTimeout)
+	ae.Uint32(cipvs.CmdAttrTimeoutTcpFin, config.TCPFinTimeout)
+	ae.Uint32(cipvs.CmdAttrTimeoutUdp, config.UDPTimeout)
+
+	b, err := ae.Encode()
+	if err != nil {
+		return err
+	}
+
+	msg := genetlink.Message{
+		Header: genetlink.Header{
+			Command: cipvs.CmdSetConfig,
+			Version: cipvs.GenlVersion,
+		},
+		Data: b,
+	}
+	flags := netlink.Request | netlink.Acknowledge
+
+	r, err := c.c.Execute(msg, c.family.ID, flags)
+	if err != nil {
+		return err
+	}
+
+	if len(r) == 0 {
+		return os.ErrInvalid
+	}
+
+	return nil
+}
+
 // Services returns a list of Services from the netlink connection.
 func (c *client) Services() ([]ServiceExtended, error) {
 	msg := genetlink.Message{
