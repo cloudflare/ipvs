@@ -5,9 +5,9 @@ package ipvs
 
 import (
 	"io"
+	"io/fs"
 	"net"
 	"net/netip"
-	"os"
 	"testing"
 	"unicode"
 
@@ -29,11 +29,9 @@ func TestServices_IsNotExist(t *testing.T) {
 		return nil, io.EOF
 	}
 	client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetService, netlink.Request|netlink.Dump, fn))
-	defer client.Close()
 
-	if _, err := client.Services(); !os.IsNotExist(err) {
-		t.Fatalf("expected to not exists, but got: %v", err)
-	}
+	_, err := client.Services()
+	assert.ErrorIs(t, err, fs.ErrNotExist)
 }
 
 func TestServices(t *testing.T) {
@@ -263,14 +261,11 @@ func TestServices(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			fn := func(gerq genetlink.Message, _ netlink.Message) ([]genetlink.Message, error) {
 				return tt.msgs, nil
 			}
 			client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetService, netlink.Request|netlink.Dump, fn))
-
-			defer client.Close()
 
 			se, err := client.Services()
 			assert.NilError(t, err)
@@ -348,7 +343,6 @@ func TestDestinations_Pack(t *testing.T) {
 		}
 
 		client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdNewDest, netlink.Request|netlink.Acknowledge, fn))
-		defer client.Close()
 
 		err := client.CreateDestination(Service{
 			Address:   netip.MustParseAddr("127.0.1.1"),
@@ -612,7 +606,6 @@ func TestDestinations_Pack(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -632,7 +625,6 @@ func TestDestinations_Unpack(t *testing.T) {
 		}
 
 		client := testClient(t, genltest.CheckRequest(familyID, cipvs.CmdGetDest, netlink.Request|netlink.Dump, fn))
-		defer client.Close()
 
 		result, err := client.Destinations(Service{
 			Family: INET,
@@ -791,7 +783,6 @@ func TestDestinations_Unpack(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -821,7 +812,6 @@ func TestConfig(t *testing.T) {
 		return msg, nil
 	}
 	client := testClient(t, fn)
-	defer client.Close()
 
 	actualConfig, err := client.Config()
 	assert.NilError(t, err)
@@ -858,7 +848,6 @@ func TestSetConfig(t *testing.T) {
 		return []genetlink.Message{{}}, nil
 	}
 	client := testClient(t, fn)
-	defer client.Close()
 
 	assert.NilError(t, client.SetConfig(Config{
 		TCPTimeout:    900,
@@ -878,9 +867,11 @@ func testClient(t *testing.T, fn genltest.Func) *client {
 
 	conn := genltest.Dial(genltest.ServeFamily(family, fn))
 	client, err := initClient(conn)
-	if err != nil {
-		t.Fatalf("failed to open client: %v", err)
-	}
+	assert.NilError(t, err)
+
+	t.Cleanup(func() {
+		client.Close()
+	})
 
 	return client
 }

@@ -63,7 +63,6 @@ func TestNetmask_MaskFrom4(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -127,7 +126,6 @@ func TestNetmask_MaskFrom16(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -197,7 +195,6 @@ func TestNemask_MaskFromSlice(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -263,7 +260,6 @@ func TestNemask_AsSlice(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -352,7 +348,6 @@ func TestNetmask_MaskFrom(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -395,7 +390,6 @@ func TestNetmask_IsValid(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -438,7 +432,6 @@ func TestNetmask_Is4(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -481,7 +474,6 @@ func TestNetmask_Is6(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -532,7 +524,6 @@ func TestNetmask_AppendBinary(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -560,7 +551,6 @@ func TestNetmask_MarshalBinary(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -589,7 +579,6 @@ func TestNetmask_UnmarshalBinary(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -668,7 +657,6 @@ func TestNetmask_MarshalText(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -697,7 +685,6 @@ func TestNetmask_UnmarshalText(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
@@ -775,7 +762,6 @@ func TestNetmask_String(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			run(t, tc)
 		})
