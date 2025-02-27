@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/google/go-cmp v0.5.9
-	github.com/josharian/native v1.0.0
 	github.com/mdlayher/genetlink v1.3.1
 	github.com/mdlayher/netlink v1.7.1
 	github.com/xlab/c-for-go v0.0.0-20230906092656-a1822f0a09c1
@@ -14,6 +13,7 @@ require (
 )
 
 require (
+	github.com/josharian/native v1.0.0 // indirect
 	github.com/mdlayher/socket v0.4.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/tj/go-spin v1.1.0 // indirect
