@@ -7,3 +7,17 @@ package can be used in environment without the `ipvsadm` tool, and in programs
 compiled without CGO.
 
 Usage examples can be found in the [Go Reference](https://pkg.go.dev/github.com/cloudflare/ipvs#pkg-examples).
+
+## Supported Versions
+
+### Go
+
+This project follows the [Go Release Policy][go-release]: the last two major Go releases are supported and tested.
+Changes which break unsupported Go releases are not considered breaking changes.
+
+[go-release]: https://go.dev/doc/devel/release#policy
+
+### Linux
+
+This project supports the Linux kernels from [kernel.org][] that are designated "stable" or "longterm".
+Changes which break unsupported Linux releases are not considered breaking changes.
