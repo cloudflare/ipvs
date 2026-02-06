@@ -3,9 +3,9 @@ GENERATOR:
 
 PARSER:
   IncludePaths:
-    - /usr/include
+    - /usr/src/linux/include/
   SourcesPaths:
-    - ip_vs.h
+    - uapi/linux/ip_vs.h
 
 TRANSLATOR:
   ConstRules:

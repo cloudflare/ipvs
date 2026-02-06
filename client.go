@@ -116,7 +116,7 @@ func New() (Client, error) {
 	return newClient()
 }
 
-//go:generate stringer -type=ForwardType,AddressFamily,Protocol,TunnelType,TunnelFlags --output zz_generated.stringer.go
+//go:generate go tool stringer -type=ForwardType,AddressFamily,Protocol,TunnelType,TunnelFlags --output zz_generated.stringer.go
 
 // ForwardType configures how IPVS forwards traffic to the real server.
 type ForwardType uint32

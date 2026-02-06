@@ -20,10 +20,11 @@ const _ForwardType_name = "MasqueradeLocalTunnelDirectRouteBypass"
 var _ForwardType_index = [...]uint8{0, 10, 15, 21, 32, 38}
 
 func (i ForwardType) String() string {
-	if i >= ForwardType(len(_ForwardType_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_ForwardType_index)-1 {
 		return "ForwardType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _ForwardType_name[_ForwardType_index[i]:_ForwardType_index[i+1]]
+	return _ForwardType_name[_ForwardType_index[idx]:_ForwardType_index[idx+1]]
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
@@ -89,10 +90,11 @@ const _TunnelType_name = "IPIPGUEGRE"
 var _TunnelType_index = [...]uint8{0, 4, 7, 10}
 
 func (i TunnelType) String() string {
-	if i >= TunnelType(len(_TunnelType_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_TunnelType_index)-1 {
 		return "TunnelType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _TunnelType_name[_TunnelType_index[i]:_TunnelType_index[i+1]]
+	return _TunnelType_name[_TunnelType_index[idx]:_TunnelType_index[idx+1]]
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
@@ -108,8 +110,9 @@ const _TunnelFlags_name = "TunnelEncapNoChecksumTunnelEncapChecksumTunnelEncapRe
 var _TunnelFlags_index = [...]uint8{0, 21, 40, 65}
 
 func (i TunnelFlags) String() string {
-	if i >= TunnelFlags(len(_TunnelFlags_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_TunnelFlags_index)-1 {
 		return "TunnelFlags(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _TunnelFlags_name[_TunnelFlags_index[i]:_TunnelFlags_index[i+1]]
+	return _TunnelFlags_name[_TunnelFlags_index[idx]:_TunnelFlags_index[idx+1]]
 }

@@ -7,4 +7,4 @@
 // https://github.com/xlab/c-for-go
 package cipvs
 
-//go:generate c-for-go -out ../ -nocgo ip_vs.yaml
+//go:generate go tool c-for-go -out ../ -nocgo -nostamp ip_vs.yaml
