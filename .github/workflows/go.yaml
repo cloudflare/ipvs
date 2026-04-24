@@ -1,23 +1,59 @@
 name: Go Checks
 on:
-  - push
-  - pull_request
+  push: {}
+  pull_request: {}
+  schedule:
+    - cron: "10 14 * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
         go:
-          - stable
-          - oldstable
+          - { go-version: stable }
+          - { go-version: oldstable }
+        deps:
+          - locked
+          - latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
         with:
-          go-version: ${{ matrix.go }}
-      - run: go test ./...
-      - uses: dominikh/staticcheck-action@v1.3.0
+          persist-credentials: false
+      - uses: actions/setup-go@v6
         with:
-          install-go: false
-          cache-key: ${{ matrix.go }}
+          go-version: ${{ matrix.go.go-version }}
+      - uses: geomys/sandboxed-step@v1.2.1
+        with:
+          run: |
+            if [ "${{ matrix.deps }}" = "latest" ]; then
+              go get -u -t ./...
+            fi
+            go test ./...
+  staticcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - uses: geomys/sandboxed-step@v1.2.1
+        with:
+          run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - uses: geomys/sandboxed-step@v1.2.1
+        with:
+          run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

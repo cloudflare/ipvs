@@ -15,17 +15,15 @@ permissions:
 jobs:
   semgrep:
     name: semgrep-oss
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
-      - id: cache-semgrep
-        uses: actions/cache@v5
+          persist-credentials: false
+      - uses: actions/setup-python@v6
         with:
-          path: ~/.local
-          key: semgrep-1.160.0-${{ runner.os }}
-      - if: steps.cache-semgrep.outputs.cache-hit != 'true'
-        run: pip install --user semgrep==1.160.0
-      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: semgrep scan --config=auto
+          python-version: "3.x"
+      - uses: geomys/sandboxed-step@v1.2.1
+        with:
+          run: pipx run semgrep==1.160.0 scan --config=auto
