@@ -287,7 +287,7 @@ func (mask *Mask) UnmarshalText(text []byte) error {
 		*mask = Mask{}
 		return nil
 	case n >= 1 && n <= 3:
-		u, err := strconv.ParseUint(string(text[:]), 10, 64)
+		u, err := strconv.ParseUint(string(text[:]), 10, 8)
 		if err != nil {
 			return err
 		}
